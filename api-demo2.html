@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Softr API Demo</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { padding: 8px 16px; margin-top: 10px; }
+    pre { background: #f3f3f3; padding: 10px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h2>🎙️ API Demo in Softr</h2>
+  <button id="recordBtn">Start Recording</button>
+  <button id="stopBtn" disabled>Stop Recording</button>
+  <pre id="result">Waiting...</pre>
+
+  <script>
+    let recorder, audioChunks = [];
+
+    const recordBtn = document.getElementById("recordBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const result = document.getElementById("result");
+
+    recordBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      recorder.ondataavailable = e => audioChunks.push(e.data);
+      recorder.onstop = sendAudioToAPI;
+      recorder.start();
+
+      recordBtn.disabled = true;
+      stopBtn.disabled = false;
+      result.textContent = "Recording...";
+    };
+
+    stopBtn.onclick = () => {
+      recorder.stop();
+      recordBtn.disabled = false;
+      stopBtn.disabled = true;
+      result.textContent = "Processing...";
+    };
+
+    async function sendAudioToAPI() {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const formData = new FormData();
+      formData.append("file", blob, "recording.webm");
+
+      try {
+        // ✅ 调用你自己的后端API（示例 URL）
+        const response = await fetch("https://your-api-server.com/transcribe", {
+          method: "POST",
+          body: formData
+        });
+        const data = await response.json();
+        result.textContent = "✅ Result:\n" + data.text;
+      } catch (err) {
+        console.error(err);
+        result.textContent = "❌ Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
